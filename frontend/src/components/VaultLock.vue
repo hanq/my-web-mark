@@ -8,6 +8,7 @@ import { useVaultStore } from '../stores/vault'
 import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{ mode: 'setup' | 'unlock' }>()
+const emit = defineEmits<{ close: [] }>()
 const vault = useVaultStore()
 
 const pwd = ref('')
@@ -52,6 +53,9 @@ const errMsg = computed(() => localErr.value || vault.error)
 <template>
   <div class="modal-mask">
     <div class="modal vault-modal">
+      <button v-if="!isSetup" class="btn ghost close-x" title="取消" @click="emit('close')">
+        <AppIcon name="close" :size="16" />
+      </button>
       <div class="vault-head">
         <span class="vault-icon"><AppIcon :name="isSetup ? 'shield' : 'key'" :size="26" /></span>
         <h3>{{ isSetup ? '设置管理员密码' : '输入管理员密码' }}</h3>
@@ -106,6 +110,12 @@ const errMsg = computed(() => localErr.value || vault.error)
 <style scoped>
 .vault-modal {
   width: min(420px, calc(100vw - 48px));
+  position: relative;
+}
+.close-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
 }
 .vault-head {
   text-align: center;

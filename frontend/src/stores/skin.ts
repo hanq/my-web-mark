@@ -1,9 +1,22 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
-export type ThemeSkin = 'dark' | 'light' | 'neon'
+export type ThemeSkin =
+  | 'dark'
+  | 'light'
+  | 'neon'
+  | 'chalkboard'
+  | 'obsidian'
+  | 'bamboo'
+  | 'jade'
+  | 'rainbow'
 
 const STORAGE_KEY = 'mwm-skin'
+
+/** 全部合法皮肤（localStorage 回读校验用） */
+const VALID_SKINS: ThemeSkin[] = [
+  'dark', 'light', 'neon', 'chalkboard', 'obsidian', 'bamboo', 'jade', 'rainbow',
+]
 
 /** 界面皮肤（data-theme 换肤）状态；切换时写 <html data-theme> 并同步 3D 场景回调。 */
 export const useSkinStore = defineStore('skin', () => {
@@ -13,7 +26,7 @@ export const useSkinStore = defineStore('skin', () => {
 
   function load(): ThemeSkin {
     const v = localStorage.getItem(STORAGE_KEY)
-    return v === 'light' || v === 'neon' ? v : 'dark'
+    return VALID_SKINS.includes(v as ThemeSkin) ? (v as ThemeSkin) : 'dark'
   }
 
   function apply() {

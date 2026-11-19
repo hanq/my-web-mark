@@ -50,9 +50,33 @@ export const useThemeStore = defineStore('theme', () => {
     await refresh()
   }
 
-  function select(id: number) {
-    activeThemeId.value = id
+  /**
+   * 侧栏拖拽重排主题：本地生效后写库，失败回滚刷新。
+   * 收起态与展开态均可拖拽。
+   */
+  async function reorderThemes(dragId: number, targetId: number, pos: 'before' | 'after') {
+    if (dragId === targetId) return
+    const list = themes.value.slice()
+    const from = list.findIndex((t) => t.id === dragId)
+    const to = list.findIndex((t) => t.id === targetId)
+    if (from < 0 || to < 0) return
+    const [moved] = list.splice(from, 1)
+    let to2 = list.findIndex((t) => t.id === targetId)
+    if (pos === 'after') to2 += 1
+    list.splice(to2, 0, moved)
+    themes.value = list
+    try {
+      await themeApi.sort(list.map((t) => t.id))
+    } catch (e) {
+      error.value = toMsg(e)
+      await refresh()
+    }
   }
 
-  return { themes, activeThemeId, activeTheme, loading, error, refresh, create, update, remove, sort, select }
+  function select(id: number) {
+    activeThemeId.value = id
+    localStorage.setItem('mwm-last-theme', String(id))
+  }
+
+  return { themes, activeThemeId, activeTheme, loading, error, refresh, create, update, remove, sort, select, reorderThemes }
 })
