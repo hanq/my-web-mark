@@ -30,6 +30,10 @@ export function PreviewImport(arg1) {
   return window['go']['app']['BookmarkService']['PreviewImport'](arg1);
 }
 
+export function Sort(arg1) {
+  return window['go']['app']['BookmarkService']['Sort'](arg1);
+}
+
 export function Update(arg1, arg2) {
   return window['go']['app']['BookmarkService']['Update'](arg1, arg2);
 }

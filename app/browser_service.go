@@ -6,9 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"my-web-mark/internal/bookmarks"
 )
 
 // BrowserService 拖拽/外部 URL 处理辅助。
@@ -133,19 +136,108 @@ func decodeHTMLText(s string) string {
 	return htmlUnescape(s)
 }
 
-// OpenURLInput 用系统默认浏览器打开 URL 的入参。
+// OpenURLInput 用指定/默认浏览器打开 URL 的入参。
 type OpenURLInput struct {
 	URL string `json:"url"`
 }
 
-// OpenInDefaultBrowser 用系统默认浏览器打开书签（前端不能直接 window.open 外链）。
-func (b *BrowserService) OpenInDefaultBrowser(in OpenURLInput) error {
+// OpenInDefaultBrowser 按用户偏好（设置项 launch_browser）打开书签。
+// 返回值为提示信息：空串表示正常；非空表示发生了回退（如指定浏览器未安装）。
+func (b *BrowserService) OpenInDefaultBrowser(in OpenURLInput) (string, error) {
 	u := strings.TrimSpace(in.URL)
 	if u == "" {
-		return fmt.Errorf("app: URL 为空")
+		return "", fmt.Errorf("app: URL 为空")
 	}
 	if !strings.Contains(u, "://") {
 		u = "https://" + u
 	}
-	return openBrowser(u)
+
+	kind, _ := b.sh.store.GetSetting(SettingKeyLaunchBrowser)
+	if kind == "" || kind == "system" || !launchBrowserValues[kind] {
+		if err := openBrowser(u); err != nil {
+			return "", err
+		}
+		return "", nil
+	}
+
+	name := bookmarks.DisplayNames[bookmarks.BrowserKind(kind)]
+	exe, ok := findBrowserExe(kind, fileExists)
+	if !ok {
+		// 指定浏览器未安装：回退系统默认，保证行为不中断
+		if err := openBrowser(u); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("未找到 %s，已使用系统默认浏览器打开", name), nil
+	}
+	// Chromium 系与 Firefox 系的新窗口参数不同
+	arg := "--new-window"
+	if kind == "firefox" || kind == "zen" {
+		arg = "-new-window"
+	}
+	if err := execCommand(exe, arg, u); err != nil {
+		return "", err
+	}
+	return "", nil
+}
+
+// fileExists 文件存在且非目录。
+func fileExists(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
+}
+
+// findBrowserExe 在候选路径中探测指定浏览器可执行文件。
+func findBrowserExe(kind string, exists func(string) bool) (string, bool) {
+	for _, cand := range browserExeCandidates(kind) {
+		p := expandWinPath(cand)
+		if exists(p) {
+			return p, true
+		}
+	}
+	return "", false
+}
+
+// browserExeCandidates 各浏览器可执行文件的常见安装路径候选（Windows）。
+func browserExeCandidates(kind string) []string {
+	switch kind {
+	case "edge":
+		return []string{
+			`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
+			`C:\Program Files\Microsoft\Edge\Application\msedge.exe`,
+		}
+	case "chrome":
+		return []string{
+			`C:\Program Files\Google\Chrome\Application\chrome.exe`,
+			`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
+			`%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe`,
+		}
+	case "firefox":
+		return []string{
+			`C:\Program Files\Mozilla Firefox\firefox.exe`,
+			`C:\Program Files (x86)\Mozilla Firefox\firefox.exe`,
+		}
+	case "zen":
+		return []string{
+			`C:\Program Files\Zen Browser\zen.exe`,
+			`C:\Program Files (x86)\Zen Browser\zen.exe`,
+			`%LOCALAPPDATA%\Zen Browser\Application\zen.exe`,
+		}
+	}
+	return nil
+}
+
+// expandWinPath 展开 Windows 风格 %VAR% 环境变量（os.ExpandEnv 不处理该格式）。
+func expandWinPath(p string) string {
+	if !strings.HasPrefix(p, "%") {
+		return p
+	}
+	rest := p[1:]
+	i := strings.IndexByte(rest, '%')
+	if i < 0 {
+		return p
+	}
+	if v := os.Getenv(rest[:i]); v != "" {
+		return v + rest[i+1:]
+	}
+	return p
 }

@@ -18,11 +18,11 @@ func (s *Store) CreateTheme(t *Theme) error {
 	return err
 }
 
-// UpdateTheme 更新主题的可编辑字段。
+// UpdateTheme 更新主题的可编辑字段（不动 sort，排序由 Sort 接口独立维护）。
 func (s *Store) UpdateTheme(t *Theme) error {
 	res, err := s.db.Exec(
-		`UPDATE theme SET name = ?, color = ?, icon = ?, sort = ? WHERE id = ?`,
-		t.Name, t.Color, t.Icon, t.Sort, t.ID)
+		`UPDATE theme SET name = ?, color = ?, icon = ? WHERE id = ?`,
+		t.Name, t.Color, t.Icon, t.ID)
 	if err != nil {
 		return fmt.Errorf("store: 更新主题失败: %w", err)
 	}
@@ -42,6 +42,22 @@ func (s *Store) UpdateThemeSort(id int64, sort int) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// GetTheme 按 id 查询单个主题。
+func (s *Store) GetTheme(id int64) (*Theme, error) {
+	row := s.db.QueryRow(`SELECT id, name, color, icon, sort, created_at FROM theme WHERE id = ?`, id)
+	var t Theme
+	var created sql.NullString
+	err := row.Scan(&t.ID, &t.Name, &t.Color, &t.Icon, &t.Sort, &created)
+	if err == sql.ErrNoRows {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("store: 查询主题失败: %w", err)
+	}
+	t.CreatedAt = parseTime(created.String)
+	return &t, nil
 }
 
 // DeleteTheme 删除主题（级联删除其下书签与账号）。

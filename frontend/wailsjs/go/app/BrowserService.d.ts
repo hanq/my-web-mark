@@ -6,6 +6,6 @@ export function ClearClipboard():Promise<void>;
 
 export function CopyToClipboard(arg1:app.CopyTextInput):Promise<void>;
 
-export function OpenInDefaultBrowser(arg1:app.OpenURLInput):Promise<void>;
+export function OpenInDefaultBrowser(arg1:app.OpenURLInput):Promise<string>;
 
 export function ParseDroppedURL(arg1:string):Promise<app.ParsedURL>;

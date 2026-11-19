@@ -18,4 +18,6 @@ export function ListByTheme(arg1:number):Promise<Array<store.Bookmark>>;
 
 export function PreviewImport(arg1:string):Promise<app.ImportPreview>;
 
+export function Sort(arg1:app.BookmarkSortInput):Promise<void>;
+
 export function Update(arg1:number,arg2:app.BookmarkInput):Promise<void>;

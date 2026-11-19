@@ -2,11 +2,14 @@ export namespace app {
 	
 	export class AccountInput {
 	    themeId: number;
+	    kind: string;
+	    bookmarkId: number;
 	    site: string;
 	    username: string;
 	    password: string;
 	    url: string;
 	    note: string;
+	    tagIds: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new AccountInput(source);
@@ -15,21 +18,27 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.themeId = source["themeId"];
+	        this.kind = source["kind"];
+	        this.bookmarkId = source["bookmarkId"];
 	        this.site = source["site"];
 	        this.username = source["username"];
 	        this.password = source["password"];
 	        this.url = source["url"];
 	        this.note = source["note"];
+	        this.tagIds = source["tagIds"];
 	    }
 	}
 	export class AccountSummary {
 	    id: number;
 	    themeId: number;
+	    kind: string;
+	    bookmarkId?: number;
 	    site: string;
 	    username: string;
 	    hasPwd: boolean;
 	    url: string;
 	    note: string;
+	    tags: store.Tag[];
 	
 	    static createFrom(source: any = {}) {
 	        return new AccountSummary(source);
@@ -39,12 +48,33 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.themeId = source["themeId"];
+	        this.kind = source["kind"];
+	        this.bookmarkId = source["bookmarkId"];
 	        this.site = source["site"];
 	        this.username = source["username"];
 	        this.hasPwd = source["hasPwd"];
 	        this.url = source["url"];
 	        this.note = source["note"];
+	        this.tags = this.convertValues(source["tags"], store.Tag);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class BookmarkInput {
 	    themeId: number;
@@ -53,6 +83,7 @@ export namespace app {
 	    favicon: string;
 	    note: string;
 	    pinned: boolean;
+	    tagIds: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new BookmarkInput(source);
@@ -66,6 +97,19 @@ export namespace app {
 	        this.favicon = source["favicon"];
 	        this.note = source["note"];
 	        this.pinned = source["pinned"];
+	        this.tagIds = source["tagIds"];
+	    }
+	}
+	export class BookmarkSortInput {
+	    ids: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new BookmarkSortInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ids = source["ids"];
 	    }
 	}
 	export class BrowserBookmark {
@@ -207,6 +251,26 @@ export namespace app {
 	        this.errors = source["errors"];
 	    }
 	}
+	export class ImportThemeResult {
+	    themeName: string;
+	    themeId: number;
+	    imported: number;
+	    skipped: number;
+	    tagCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportThemeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.themeName = source["themeName"];
+	        this.themeId = source["themeId"];
+	        this.imported = source["imported"];
+	        this.skipped = source["skipped"];
+	        this.tagCount = source["tagCount"];
+	    }
+	}
 	export class OpenURLInput {
 	    url: string;
 	
@@ -259,6 +323,20 @@ export namespace app {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ids = source["ids"];
+	    }
+	}
+	export class TagInput {
+	    name: string;
+	    color: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagInput(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.color = source["color"];
 	    }
 	}
 	export class ThemeInput {
@@ -380,6 +458,26 @@ export namespace bookmarks {
 
 export namespace store {
 	
+	export class Tag {
+	    id: number;
+	    themeId: number;
+	    name: string;
+	    color: string;
+	    sort: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Tag(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.themeId = source["themeId"];
+	        this.name = source["name"];
+	        this.color = source["color"];
+	        this.sort = source["sort"];
+	    }
+	}
 	export class Bookmark {
 	    id: number;
 	    themeId: number;
@@ -389,6 +487,7 @@ export namespace store {
 	    note: string;
 	    pinned: boolean;
 	    source: string;
+	    tags: Tag[];
 	    // Go type: time
 	    createdAt: any;
 	
@@ -406,6 +505,7 @@ export namespace store {
 	        this.note = source["note"];
 	        this.pinned = source["pinned"];
 	        this.source = source["source"];
+	        this.tags = this.convertValues(source["tags"], Tag);
 	        this.createdAt = this.convertValues(source["createdAt"], null);
 	    }
 	
@@ -427,6 +527,7 @@ export namespace store {
 		    return a;
 		}
 	}
+	
 	export class Theme {
 	    id: number;
 	    name: string;

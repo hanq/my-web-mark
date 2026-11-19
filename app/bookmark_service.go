@@ -16,12 +16,13 @@ type BookmarkService struct {
 
 // BookmarkInput 创建/更新书签入参。
 type BookmarkInput struct {
-	ThemeID int64  `json:"themeId"`
-	Title   string `json:"title"`
-	URL     string `json:"url"`
-	Favicon string `json:"favicon"`
-	Note    string `json:"note"`
-	Pinned  bool   `json:"pinned"`
+	ThemeID int64    `json:"themeId"`
+	Title   string   `json:"title"`
+	URL     string   `json:"url"`
+	Favicon string   `json:"favicon"`
+	Note    string   `json:"note"`
+	Pinned  bool     `json:"pinned"`
+	TagIDs  []int64  `json:"tagIds"` // 关联标签（整体替换）
 }
 
 func (in *BookmarkInput) validate() error {
@@ -63,7 +64,12 @@ func (b *BookmarkService) Create(in BookmarkInput) (*store.Bookmark, error) {
 	if err := b.sh.store.CreateBookmark(bm); err != nil {
 		return nil, err
 	}
-	return bm, nil
+	if len(in.TagIDs) > 0 {
+		if err := b.sh.store.SetBookmarkTags(bm.ID, in.TagIDs); err != nil {
+			return nil, err
+		}
+	}
+	return b.sh.store.GetBookmark(bm.ID)
 }
 
 // Update 更新书签。
@@ -71,15 +77,31 @@ func (b *BookmarkService) Update(id int64, in BookmarkInput) error {
 	if err := in.validate(); err != nil {
 		return err
 	}
-	return b.sh.store.UpdateBookmark(&store.Bookmark{
+	if err := b.sh.store.UpdateBookmark(&store.Bookmark{
 		ID: id, ThemeID: in.ThemeID, Title: in.Title, URL: in.URL,
 		Favicon: in.Favicon, Note: in.Note, Pinned: in.Pinned,
-	})
+	}); err != nil {
+		return err
+	}
+	return b.sh.store.SetBookmarkTags(id, in.TagIDs)
 }
 
 // Delete 删除书签。
 func (b *BookmarkService) Delete(id int64) error {
 	return b.sh.store.DeleteBookmark(id)
+}
+
+// BookmarkSortInput 拖拽排序入参：按数组顺序写入 sort。
+type BookmarkSortInput struct {
+	IDs []int64 `json:"ids"`
+}
+
+// Sort 批量保存书签顺序（同主题内，置顶组在前由前端保证）。
+func (b *BookmarkService) Sort(in BookmarkSortInput) error {
+	if len(in.IDs) == 0 {
+		return nil
+	}
+	return b.sh.store.SortBookmarks(in.IDs)
 }
 
 // --- 浏览器导入 ---

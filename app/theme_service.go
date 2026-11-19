@@ -75,7 +75,7 @@ func (t *ThemeService) Update(id int64, in ThemeInput) error {
 		return err
 	}
 	return t.sh.store.UpdateTheme(&store.Theme{
-		ID: id, Name: in.Name, Color: in.Color, Icon: in.Icon, Sort: 0,
+		ID: id, Name: in.Name, Color: in.Color, Icon: in.Icon,
 	})
 }
 
