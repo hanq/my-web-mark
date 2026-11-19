@@ -3,6 +3,7 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"syscall"
